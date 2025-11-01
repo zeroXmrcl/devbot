@@ -1,0 +1,86 @@
+import 'dotenv/config';
+import { Client, GatewayIntentBits, REST, Routes, Events } from 'discord.js';
+import fs from 'fs';
+import path from 'path';
+import url from 'url';
+
+// --- Base ---
+const TOKEN = process.env.DISCORD_TOKEN;
+const CLIENT_ID = process.env.DISCORD_CLIENT_ID; // App ID
+
+// __dirname in ESM
+const __filename = url.fileURLToPath(import.meta.url);
+const __dirname  = path.dirname(__filename);
+
+// --- Client ---
+const client = new Client({ intents: [GatewayIntentBits.Guilds] });
+
+// 1) Command registry
+client.commands = new Map();
+
+// 2) Load command files
+const commandsDir = path.join(__dirname, 'commands');
+if (fs.existsSync(commandsDir)) {
+    const files = fs.readdirSync(commandsDir).filter(f => f.endsWith('.js'));
+    for (const file of files) {
+        const mod = await import(path.join(commandsDir, file));
+        const command = mod.default ?? mod; // fallback if no default export was used
+        if (!command?.data?.name || typeof command.execute !== 'function') {
+            console.warn(`⚠️ Skipping ${file}: expected { data: { name }, execute() }`);
+            continue;
+        }
+        client.commands.set(command.data.name, command);
+    }
+} else {
+    console.warn('⚠️ Folder ./commands not found – create it and add command files.');
+}
+
+console.log(`📦 ${client.commands.size} commands loaded: ${[...client.commands.keys()].join(', ') || '–'}`);
+
+// 3) Register slash commands
+const rest = new REST({ version: '10' }).setToken(TOKEN);
+try {
+    const payload = [...client.commands.values()].map(c => c.data);
+    console.log('🌍 Registering global commands...');
+    await rest.put(Routes.applicationCommands(CLIENT_ID), { body: payload });
+    console.log('✅ Successfully registered!');
+} catch (err) {
+    console.error('❌ Error while registering:', err);
+}
+
+// Events
+client.once(Events.ClientReady, (c) => {
+    console.log(`✅ Logged in as ${c.user.tag}`);
+    console.log('------------- RUN -------------')
+});
+
+client.on(Events.InteractionCreate, async (interaction) => {
+    if (!interaction.isChatInputCommand()) return;
+
+    // Access command
+    const command = client.commands?.get(interaction.commandName);
+    if (!command) {
+        console.warn(`❓ Unknown command: ${interaction.commandName}`);
+        try {
+            await interaction.reply({ content: 'Unknown command.', ephemeral: true });
+        } catch {}
+        return;
+    }
+
+    try {
+        console.log('----------- Process -----------')
+        await command.execute(interaction);
+        console.log('------------- END -------------')
+    } catch (err) {
+        console.error(`🛑 Error in /${interaction.commandName}:`, err);
+        if (interaction.deferred || interaction.replied) {
+            await interaction.editReply('There was an error executing this command.');
+        } else {
+            await interaction.reply({ content: 'There was an error executing this command.', ephemeral: true });
+        }
+    }
+});
+
+// 5) Start
+client.on('error', (e) => console.error('Client error:', e));
+client.login(TOKEN);
