@@ -23,11 +23,11 @@ export default {
         ],
     },
     async execute(interaction) {
+        const user = interaction.user;
+        const input = interaction.options.getString('text');
+        const mode = interaction.options.getString('mode');
         if (interaction.options.getString('mode') === 'encode') {
-            const user = interaction.user;
-            const input = interaction.options.getString('text');
-
-            console.info(`${interaction} by ${user.username} (${user.id}) in ${interaction.guild.name}`);
+            console.info(`${interaction} by ${interaction.user.username} (${user.id}) in ${interaction.guild.name}`);
             console.time(`cmd ${interaction} (${interaction.guild.name})`);
 
             const encoded = Buffer.from(input, 'utf-8').toString('base64');
@@ -35,9 +35,6 @@ export default {
 
             console.timeEnd(`cmd ${interaction} (${interaction.guild.name})`);
         } else if (interaction.options.getString('mode') === 'decode') {
-            const user = interaction.user;
-            const input = interaction.options.getString('text');
-
             console.info(`${interaction} by ${user.username} (${user.id}) in ${interaction.guild.name}`);
             console.time(`cmd ${interaction} (${interaction.guild.name})`);
 
@@ -46,8 +43,8 @@ export default {
 
             console.timeEnd(`cmd ${interaction} (${interaction.guild.name})`);
         } else {
-            console.error(`WARNING: Invalid mode`);
-            interaction.reply(`Intern Error: Invalid mode (${interaction.options.getString('mode')})`);
+            console.error(`WARNING: Invalid mode ${interaction.options.getString('mode')}`);
+            interaction.reply(`Intern Error: Invalid mode (${mode})`);
         }
     },
 };

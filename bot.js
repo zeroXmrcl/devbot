@@ -28,7 +28,7 @@ const commandsDir = path.join(__dirname, 'commands');
 if (fs.existsSync(commandsDir)) {
     const files = fs.readdirSync(commandsDir).filter(f => f.endsWith('.js'));
     for (const file of files) {
-        const mod = await import(path.join(commandsDir, file));
+        const mod = await import(new URL(`./commands/${file}`, import.meta.url));
         const command = mod.default ?? mod; // fallback if no default export was used
         if (!command?.data?.name || typeof command.execute !== 'function') {
             console.warn(`⚠️ Skipping ${file}: expected { data: { name }, execute() }`);
