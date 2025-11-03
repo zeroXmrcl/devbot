@@ -8,6 +8,11 @@ import url from 'url';
 const TOKEN = process.env.DISCORD_TOKEN;
 const CLIENT_ID = process.env.DISCORD_CLIENT_ID; // App ID
 
+if (!TOKEN || !CLIENT_ID) {
+    console.error('Environment missing: DISCORD_TOKEN and/or DISCORD_CLIENT_ID are not set.');
+    process.exit(1);
+}
+
 // __dirname in ESM
 const __filename = url.fileURLToPath(import.meta.url);
 const __dirname  = path.dirname(__filename);
@@ -37,21 +42,20 @@ if (fs.existsSync(commandsDir)) {
 
 console.log(`📦 ${client.commands.size} commands loaded: ${[...client.commands.keys()].join(', ') || '–'}`);
 
-// 3) Register slash commands
-const rest = new REST({ version: '10' }).setToken(TOKEN);
-try {
-    const payload = [...client.commands.values()].map(c => c.data);
-    console.log('🌍 Registering global commands...');
-    await rest.put(Routes.applicationCommands(CLIENT_ID), { body: payload });
-    console.log('✅ Successfully registered!');
-} catch (err) {
-    console.error('❌ Error while registering:', err);
-}
-
-// Events
-client.once(Events.ClientReady, (c) => {
+// 3) Register slash commands AFTER login
+client.once(Events.ClientReady, async (c) => {
     console.log(`✅ Logged in as ${c.user.tag}`);
-    console.log('------------- RUN -------------')
+    console.log('------------- RUN -------------');
+
+    const rest = new REST({ version: '10' }).setToken(TOKEN);
+    try {
+        const payload = [...client.commands.values()].map(cmd => cmd.data);
+        console.log('🌍 Registering global commands...');
+        await rest.put(Routes.applicationCommands(CLIENT_ID), { body: payload });
+        console.log('✅ Successfully registered!');
+    } catch (err) {
+        console.error('❌ Error while registering:', err);
+    }
 });
 
 client.on(Events.InteractionCreate, async (interaction) => {
@@ -68,9 +72,9 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
 
     try {
-        console.log('----------- Process -----------')
+        console.log('----------- Process -----------');
         await command.execute(interaction);
-        console.log('------------- END -------------')
+        console.log('------------- END -------------');
     } catch (err) {
         console.error(`🛑 Error in /${interaction.commandName}:`, err);
         if (interaction.deferred || interaction.replied) {
@@ -80,7 +84,5 @@ client.on(Events.InteractionCreate, async (interaction) => {
         }
     }
 });
-
-// 5) Start
 client.on('error', (e) => console.error('Client error:', e));
 client.login(TOKEN);
