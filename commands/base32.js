@@ -1,8 +1,9 @@
-import { Buffer } from 'node:buffer';
+import base32 from 'hi-base32';
+
 export default {
     data: {
-        name: 'base64',
-        description: 'Encodes a string to base64',
+        name: 'base32',
+        description: 'Encodes a string to base32',
         options: [
             {
                 name: 'mode',
@@ -29,7 +30,7 @@ export default {
             console.info(`${interaction} by ${interaction.user.username} (${interaction.user.id}) in ${interaction.guild.name}`);
             console.time(`cmd ${interaction} (${interaction.guild.name})`);
 
-            const encoded = Buffer.from(input, 'utf-8').toString('base64');
+            const encoded = base32.encode(input);
             await interaction.reply(`${encoded}`);
 
             console.timeEnd(`cmd ${interaction} (${interaction.guild.name})`);
@@ -37,7 +38,7 @@ export default {
             console.info(`${interaction} by ${interaction.user.username} (${interaction.user.id}) in ${interaction.guild.name}`);
             console.time(`cmd ${interaction} (${interaction.guild.name})`);
 
-            const decoded = Buffer.from(input, 'base64').toString('utf-8');
+            const decoded = base32.decode(input);
             await interaction.reply(`${decoded}`);
 
             console.timeEnd(`cmd ${interaction} (${interaction.guild.name})`);

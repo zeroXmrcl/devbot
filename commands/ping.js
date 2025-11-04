@@ -4,8 +4,7 @@ export default {
         description: 'Answers with Pong!',
     },
     async execute(interaction) {
-        const user = interaction.user;
-        console.info(`${interaction} by ${user.username} (${user.id}) in ${interaction.guild.name}`);
+        console.info(`${interaction} by ${interaction.user.username} (${interaction.user.id}) in ${interaction.guild.name}`);
         console.time(`cmd ${interaction} (${interaction.guild.name})`);
 
         await interaction.reply('Pong!');

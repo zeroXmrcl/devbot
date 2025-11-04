@@ -9,7 +9,7 @@ const TOKEN = process.env.DISCORD_TOKEN;
 const CLIENT_ID = process.env.DISCORD_CLIENT_ID; // App ID
 
 if (!TOKEN || !CLIENT_ID) {
-    console.error('Environment missing: DISCORD_TOKEN and/or DISCORD_CLIENT_ID are not set.');
+    console.error('[ ERROR ]Environment missing: DISCORD_TOKEN and/or DISCORD_CLIENT_ID are not set.');
     process.exit(1);
 }
 
@@ -31,30 +31,30 @@ if (fs.existsSync(commandsDir)) {
         const mod = await import(new URL(`./commands/${file}`, import.meta.url));
         const command = mod.default ?? mod; // fallback if no default export was used
         if (!command?.data?.name || typeof command.execute !== 'function') {
-            console.warn(`⚠️ Skipping ${file}: expected { data: { name }, execute() }`);
+            console.warn(`[ WARN ] Skipping ${file}: expected { data: { name }, execute() }`);
             continue;
         }
         client.commands.set(command.data.name, command);
     }
 } else {
-    console.warn('⚠️ Folder ./commands not found – create it and add command files.');
+    console.warn('️[ WARN ] Folder ./commands not found – create it and add command files.');
 }
 
-console.log(`📦 ${client.commands.size} commands loaded: ${[...client.commands.keys()].join(', ') || '–'}`);
+console.log(`[ INFO ] ${client.commands.size} commands loaded: ${[...client.commands.keys()].join(', ') || '–'}`);
 
 // 3) Register slash commands AFTER login
 client.once(Events.ClientReady, async (c) => {
-    console.log(`✅ Logged in as ${c.user.tag}`);
+    console.log(`[ INFO ] Logged in as ${c.user.tag}`);
     console.log('------------- RUN -------------');
 
     const rest = new REST({ version: '10' }).setToken(TOKEN);
     try {
         const payload = [...client.commands.values()].map(cmd => cmd.data);
-        console.log('🌍 Registering global commands...');
+        console.log('[ INFO ] Registering global commands...');
         await rest.put(Routes.applicationCommands(CLIENT_ID), { body: payload });
-        console.log('✅ Successfully registered!');
+        console.log('[ INFO ] Successfully registered!');
     } catch (err) {
-        console.error('❌ Error while registering:', err);
+        console.error('[ ERROR ] Error while registering:', err);
     }
 });
 
@@ -64,7 +64,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
     // Access command
     const command = client.commands?.get(interaction.commandName);
     if (!command) {
-        console.warn(`❓ Unknown command: ${interaction.commandName}`);
+        console.warn(`[ WARN ] Unknown command: ${interaction.commandName}`);
         try {
             await interaction.reply({ content: 'Unknown command.', ephemeral: true });
         } catch {}
@@ -76,7 +76,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         await command.execute(interaction);
         console.log('------------- END -------------');
     } catch (err) {
-        console.error(`🛑 Error in /${interaction.commandName}:`, err);
+        console.error(`[ ERROR ] Error in /${interaction.commandName}:`, err);
         if (interaction.deferred || interaction.replied) {
             await interaction.editReply('There was an error executing this command.');
         } else {

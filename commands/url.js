@@ -22,11 +22,10 @@ export default {
         ],
     },
     async execute(interaction) {
-        const user = interaction.user;
         const input = interaction.options.getString('text');
         const mode = interaction.options.getString('mode');
         if (interaction.options.getString('mode') === 'encode') {
-            console.info(`${interaction} by ${interaction.user.username} (${user.id}) in ${interaction.guild.name}`);
+            console.info(`${interaction} by ${interaction.user.username} (${interaction.user.id}) in ${interaction.guild.name}`);
             console.time(`cmd ${interaction} (${interaction.guild.name})`);
 
             const encoded = encodeURI(input);
@@ -34,7 +33,7 @@ export default {
 
             console.timeEnd(`cmd ${interaction} (${interaction.guild.name})`);
         } else if (interaction.options.getString('mode') === 'decode') {
-            console.info(`${interaction} by ${user.username} (${user.id}) in ${interaction.guild.name}`);
+            console.info(`${interaction} by ${interaction.user.username} (${interaction.user.id}) in ${interaction.guild.name}`);
             console.time(`cmd ${interaction} (${interaction.guild.name})`);
 
             const decoded = decodeURI(input);
