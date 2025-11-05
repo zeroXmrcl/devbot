@@ -10,16 +10,19 @@ const CLIENT_ID = process.env.DISCORD_CLIENT_ID; // App ID
 
 const __filename = url.fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+const commandsDir = path.join(__dirname, 'commands');
 
 const settings = {
     activity: {
-        status: 'online', // online, idle, dnd, invisible
+        enabled: true,
+        status: 'dnd', // online, idle, dnd, invisible
         activityType: 'Streaming', // Playing, Streaming (requires a Twitch/YouTube link), Listening, Watching, Competing, Custom
         fallback: 'Playing',
         name: 'Powered by Discord.js!', // the text to display
         url: '', // Needed if activityType === 'Streaming'
     }
 }
+
 // --- CONFIG END ---
 
 function getActivityType(typeString) {
@@ -76,7 +79,6 @@ const client = new Client({intents: [GatewayIntentBits.Guilds]});
 client.commands = new Map();
 
 // 2) Load command files
-const commandsDir = path.join(__dirname, 'commands');
 if (fs.existsSync(commandsDir)) {
     const files = fs.readdirSync(commandsDir).filter(f => f.endsWith('.js'));
     for (const file of files) {
@@ -90,6 +92,8 @@ if (fs.existsSync(commandsDir)) {
     }
 } else {
     console.warn(`${logColors.WARN}[ WARN ]${logColors.RESET} Folder ./commands not found – create it and add command files.`);
+    fs.mkdirSync(commandsDir);
+    console.log()
 }
 
 console.log(`${logColors.INFO}[ INFO ]${logColors.RESET} ${client.commands.size} commands loaded: ${[...client.commands.keys()].join(', ') || '–'}`);
@@ -99,7 +103,7 @@ client.once(Events.ClientReady, async (c) => {
     console.log(`${logColors.INFO}[ INFO ]${logColors.RESET} Logged in as ${c.user.tag}`);
 
     // Set bot presence from settings
-    if (settings.activity.name) {
+    if (settings.activity.enabled) {
         const presence = {
             activities: [{
                 name: settings.activity.name,
@@ -118,7 +122,9 @@ client.once(Events.ClientReady, async (c) => {
         }
 
         c.user.setPresence(presence);
-        console.log(`${logColors.INFO}[ INFO ]${logColors.RESET} Status set: ${getActivityTypeName()} ${settings.activity.name}`);
+        console.log(`${logColors.INFO}[ INFO ]${logColors.RESET} Status set: ${presence.status}; ${getActivityTypeName(presence.activities[0].type)}; ${presence.activities[0].name}`);
+    } else if (!settings.activity.enabled) {
+        console.log(`${logColors.INFO}[ INFO ]${logColors.RESET} Presence disabled.`)
     }
 
     const rest = new REST({version: '10'}).setToken(TOKEN);
