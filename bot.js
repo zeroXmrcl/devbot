@@ -1,15 +1,53 @@
 import 'dotenv/config';
-import {Client, GatewayIntentBits, REST, Routes, Events} from 'discord.js';
+import {Client, GatewayIntentBits, REST, Routes, Events, ActivityType} from 'discord.js';
 import fs from 'fs';
 import path from 'path';
 import url from 'url';
 
-// --- Base ---
+// --- CONFIG ---
 const TOKEN = process.env.DISCORD_TOKEN;
 const CLIENT_ID = process.env.DISCORD_CLIENT_ID; // App ID
 
+const __filename = url.fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const settings = {
+    activity: {
+        status: 'online', // online, idle, dnd, invisible
+        activityType: 'Streaming', // Playing, Streaming (requires a Twitch/YouTube link), Listening, Watching, Competing, Custom
+        fallback: 'Playing',
+        name: 'Powered by Discord.js!', // the text to display
+        url: '', // Needed if activityType === 'Streaming'
+    }
+}
+// --- CONFIG END ---
+
+function getActivityType(typeString) {
+    const types = {
+        'Playing': ActivityType.Playing,
+        'Streaming': ActivityType.Streaming,
+        'Listening': ActivityType.Listening,
+        'Watching': ActivityType.Watching,
+        'Competing': ActivityType.Competing,
+        'Custom': ActivityType.Custom
+    };
+    return types[typeString] || ActivityType.Playing;
+}
+
+function getActivityTypeName(typeNumber) {
+    const types = {
+        [ActivityType.Playing]: 'Playing',
+        [ActivityType.Streaming]: 'Streaming',
+        [ActivityType.Listening]: 'Listening',
+        [ActivityType.Watching]: 'Watching',
+        [ActivityType.Competing]: 'Competing',
+        [ActivityType.Custom]: 'Custom'
+    };
+    return types[typeNumber] || 'Playing';
+}
+
 const logColors = {
-    INFO: '\x1b[36m',    // Cyan (like the welcome message)
+    INFO: '\x1b[36m',    // Cyan
     ERROR: '\x1b[31m',   // Red
     WARN: '\x1b[33m',    // Yellow
     RESET: '\x1b[0m'     // Reset color
@@ -30,10 +68,6 @@ if (!TOKEN || !CLIENT_ID) {
     console.error(`${logColors.ERROR}[ ERROR ]${logColors.ERROR} Environment missing: DISCORD_TOKEN and/or DISCORD_CLIENT_ID are not set.`);
     process.exit(1);
 }
-
-// __dirname in ESM
-const __filename = url.fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 // --- Client ---
 const client = new Client({intents: [GatewayIntentBits.Guilds]});
@@ -63,6 +97,29 @@ console.log(`${logColors.INFO}[ INFO ]${logColors.RESET} ${client.commands.size}
 // 3) Register slash commands AFTER login
 client.once(Events.ClientReady, async (c) => {
     console.log(`${logColors.INFO}[ INFO ]${logColors.RESET} Logged in as ${c.user.tag}`);
+
+    // Set bot presence from settings
+    if (settings.activity.name) {
+        const presence = {
+            activities: [{
+                name: settings.activity.name,
+                type: getActivityType(settings.activity.activityType)
+            }],
+            status: settings.activity.status || 'online'
+        };
+
+        // Add URL if the activity type is Streaming
+        if (settings.activity.activityType === 'Streaming' && settings.activity.url) {
+            console.log(`${logColors.INFO}[ INFO ]${logColors.RESET} Using Streaming presence. ${settings.activity.url}`)
+            presence.activities[0].url = settings.activity.url;
+        } else if (settings.activity.activityType === 'Streaming') {
+            console.log(`${logColors.WARN}[ WARN ]${logColors.RESET} Tried to use streaming presence but no URL provided. Fallback to ${settings.activity.fallback}`)
+            presence.activities[0].type = getActivityType(settings.activity.fallback);
+        }
+
+        c.user.setPresence(presence);
+        console.log(`${logColors.INFO}[ INFO ]${logColors.RESET} Status set: ${getActivityTypeName()} ${settings.activity.name}`);
+    }
 
     const rest = new REST({version: '10'}).setToken(TOKEN);
     try {
