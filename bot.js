@@ -1,5 +1,5 @@
 import 'dotenv/config';
-import { Client, GatewayIntentBits, REST, Routes, Events } from 'discord.js';
+import {Client, GatewayIntentBits, REST, Routes, Events} from 'discord.js';
 import fs from 'fs';
 import path from 'path';
 import url from 'url';
@@ -8,17 +8,35 @@ import url from 'url';
 const TOKEN = process.env.DISCORD_TOKEN;
 const CLIENT_ID = process.env.DISCORD_CLIENT_ID; // App ID
 
+const logColors = {
+    INFO: '\x1b[36m',    // Cyan (like the welcome message)
+    ERROR: '\x1b[31m',   // Red
+    WARN: '\x1b[33m',    // Yellow
+    RESET: '\x1b[0m'     // Reset color
+};
+
+const cosmetic = {
+    welcome() {
+        console.log(`${logColors.INFO}------------- MSG -------------${logColors.RESET}`);
+
+        console.log(`${logColors.INFO}[ INFO ]${logColors.RESET} Welcome!`)
+        console.log(`${logColors.INFO}[ INFO ]${logColors.RESET} Made by 0xMRCL.`);
+
+        console.log(`${logColors.INFO}------------- END -------------${logColors.RESET}`);
+    }
+}
+
 if (!TOKEN || !CLIENT_ID) {
-    console.error('[ ERROR ]Environment missing: DISCORD_TOKEN and/or DISCORD_CLIENT_ID are not set.');
+    console.error(`${logColors.ERROR}[ ERROR ]${logColors.ERROR} Environment missing: DISCORD_TOKEN and/or DISCORD_CLIENT_ID are not set.`);
     process.exit(1);
 }
 
 // __dirname in ESM
 const __filename = url.fileURLToPath(import.meta.url);
-const __dirname  = path.dirname(__filename);
+const __dirname = path.dirname(__filename);
 
 // --- Client ---
-const client = new Client({ intents: [GatewayIntentBits.Guilds] });
+const client = new Client({intents: [GatewayIntentBits.Guilds]});
 
 // 1) Command registry
 client.commands = new Map();
@@ -31,30 +49,29 @@ if (fs.existsSync(commandsDir)) {
         const mod = await import(new URL(`./commands/${file}`, import.meta.url));
         const command = mod.default ?? mod; // fallback if no default export was used
         if (!command?.data?.name || typeof command.execute !== 'function') {
-            console.warn(`[ WARN ] Skipping ${file}: expected { data: { name }, execute() }`);
+            console.warn(`${logColors.WARN}[ WARN ]${logColors.RESET} Skipping ${file}: expected { data: { name }, execute() }`);
             continue;
         }
         client.commands.set(command.data.name, command);
     }
 } else {
-    console.warn('️[ WARN ] Folder ./commands not found – create it and add command files.');
+    console.warn(`${logColors.WARN}[ WARN ]${logColors.RESET} Folder ./commands not found – create it and add command files.`);
 }
 
-console.log(`[ INFO ] ${client.commands.size} commands loaded: ${[...client.commands.keys()].join(', ') || '–'}`);
+console.log(`${logColors.INFO}[ INFO ]${logColors.RESET} ${client.commands.size} commands loaded: ${[...client.commands.keys()].join(', ') || '–'}`);
 
 // 3) Register slash commands AFTER login
 client.once(Events.ClientReady, async (c) => {
-    console.log(`[ INFO ] Logged in as ${c.user.tag}`);
-    console.log('------------- RUN -------------');
+    console.log(`${logColors.INFO}[ INFO ]${logColors.RESET} Logged in as ${c.user.tag}`);
 
-    const rest = new REST({ version: '10' }).setToken(TOKEN);
+    const rest = new REST({version: '10'}).setToken(TOKEN);
     try {
         const payload = [...client.commands.values()].map(cmd => cmd.data);
-        console.log('[ INFO ] Registering global commands...');
-        await rest.put(Routes.applicationCommands(CLIENT_ID), { body: payload });
-        console.log('[ INFO ] Successfully registered!');
+        console.log(`${logColors.INFO}[ INFO ]${logColors.RESET} Registering global commands...`);
+        await rest.put(Routes.applicationCommands(CLIENT_ID), {body: payload});
+        console.log(`${logColors.INFO}[ INFO ]${logColors.RESET} Successfully registered!`);
     } catch (err) {
-        console.error('[ ERROR ] Error while registering:', err);
+        console.error(`${logColors.ERROR}[ ERROR ]${logColors.RESET} Error while registering:`, err);
     }
 });
 
@@ -64,10 +81,11 @@ client.on(Events.InteractionCreate, async (interaction) => {
     // Access command
     const command = client.commands?.get(interaction.commandName);
     if (!command) {
-        console.warn(`[ WARN ] Unknown command: ${interaction.commandName}`);
+        console.warn(`${logColors.WARN}[ WARN ]${logColors.RESET} Unknown command: ${interaction.commandName}`);
         try {
-            await interaction.reply({ content: 'Unknown command.', ephemeral: true });
-        } catch {}
+            await interaction.reply({content: 'Unknown command.', ephemeral: true});
+        } catch {
+        }
         return;
     }
 
@@ -76,13 +94,14 @@ client.on(Events.InteractionCreate, async (interaction) => {
         await command.execute(interaction);
         console.log('------------- END -------------');
     } catch (err) {
-        console.error(`[ ERROR ] Error in /${interaction.commandName}:`, err);
+        console.error(`${logColors.ERROR}[ ERROR ]${logColors.RESET} Error in /${interaction.commandName}:`, err);
         if (interaction.deferred || interaction.replied) {
             await interaction.editReply('There was an error executing this command.');
         } else {
-            await interaction.reply({ content: 'There was an error executing this command.', ephemeral: true });
+            await interaction.reply({content: 'There was an error executing this command.', ephemeral: true});
         }
     }
 });
 client.on('error', (e) => console.error('Client error:', e));
 client.login(TOKEN);
+cosmetic.welcome();
