@@ -16,9 +16,9 @@ const settings = {
     activity: {
         enabled: true,
         status: 'dnd', // online, idle, dnd, invisible
-        activityType: 'Streaming', // Playing, Streaming (requires a Twitch/YouTube link), Listening, Watching, Competing, Custom
+        activityType: 'Custom', // Playing, Streaming (requires a Twitch/YouTube link), Listening, Watching, Competing, Custom
         fallback: 'Playing',
-        name: 'Powered by Discord.js!', // the text to display
+        name: 'Released /gif!', // the text to display
         url: '', // Needed if activityType === 'Streaming'
     }
 }
