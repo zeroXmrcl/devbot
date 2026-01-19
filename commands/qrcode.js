@@ -22,8 +22,8 @@ export default {
         const input = interaction.options.getString('text');
         const shouldEncode = interaction.options.getBoolean('url');
 
-        console.time(`cmd ${interaction} (${interaction.guild.name})`);
-        console.info(`${interaction} by ${interaction.user.username} (${interaction.user.id}) in ${interaction.guild.name}`);
+        console.log(input, shouldEncode);
+
         try {
             const finalText = shouldEncode ? encodeURI(input) : input;
 
@@ -49,7 +49,5 @@ export default {
                 ephemeral: true,
             });
         }
-
-        console.timeEnd(`cmd ${interaction} (${interaction.guild.name})`);
     },
 };

@@ -27,9 +27,8 @@ export default {
     async execute(interaction) {
         const input = interaction.options.getString('text');
         const mode = interaction.options.getString('mode');
-        
-        console.info(`${interaction} by ${interaction.user.username} (${interaction.user.id}) in ${interaction.guild.name}`);
-        console.time(`cmd ${interaction} (${interaction.guild.name})`);
+
+        console.log(input, mode);
 
         let result;
         if (mode === 'encode') {
@@ -39,6 +38,5 @@ export default {
         }
         
         await interaction.reply(`${result}`);
-        console.timeEnd(`cmd ${interaction} (${interaction.guild.name})`);
     },
 };

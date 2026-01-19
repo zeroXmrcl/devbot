@@ -1,14 +1,14 @@
 {
   "name": "devbot",
-  "version": "1.0.0",
-  "description": "",
+  "version": "2026.1.0",
+  "description": "Discord Bot client made by 0xMRCL.",
   "main": "bot.js",
   "type": "module",
   "scripts": {
     "start": "node bot.js"
   },
   "keywords": [],
-  "author": "",
+  "author": "0xmrcl",
   "license": "ISC",
   "dependencies": {
     "bs58": "^6.0.0",
