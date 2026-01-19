@@ -29,11 +29,6 @@ export default {
     async execute(interaction) {
         const guildName = interaction.guild?.name ?? 'ELSE';
 
-        console.time(`cmd ${interaction.commandName} (${guildName})`);
-        console.info(
-            `${interaction.commandName} by ${interaction.user.username} (${interaction.user.id}) in ${guildName}`
-        );
-
         try {
             const attachment = interaction.options.getAttachment('attachment');
 
@@ -107,8 +102,6 @@ export default {
                     flags: InteractionResponseFlags.Ephemeral,
                 });
             }
-        } finally {
-            console.timeEnd(`cmd ${interaction.commandName} (${interaction.guild?.name ?? 'DM'})`);
         }
     },
 };

@@ -1,12 +1,13 @@
 import 'dotenv/config';
-import {Client, GatewayIntentBits, REST, Routes, Events, ActivityType} from 'discord.js';
+import pkg from './package.json' with { type: 'json' };
+import {Client, GatewayIntentBits, REST, Routes, Events, ActivityType, WebhookClient, EmbedBuilder} from 'discord.js';
 import fs from 'fs';
 import path from 'path';
 import url from 'url';
 
 // --- CONFIG ---
 const TOKEN = process.env.DISCORD_TOKEN;
-const CLIENT_ID = process.env.DISCORD_CLIENT_ID; // App ID
+const CLIENT_ID = process.env.DISCORD_CLIENT_ID;
 
 const __filename = url.fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -17,18 +18,39 @@ const settings = {
         enabled: true,
         status: 'dnd', // online, idle, dnd, invisible
         activityType: 'Custom', // Playing, Streaming (requires a Twitch/YouTube link), Listening, Watching, Competing, Custom
-        name: 'Released /gif!', // the text to display
+        name: `Released v${pkg.version}!`, // the text to display
         url: '', // Needed if activityType === 'Streaming'
-    }
+    },
+    loggingWebhook: {
+        webhookURL: process.env.LOG_WEBHOOK_URL || '',
+        enabled: !!process.env.LOG_WEBHOOK_URL,
+        name: 'DevBot Webhook',
+        avatarURL: 'https://cdn.discordapp.com/avatars/1434159790904442890/1d85919a393d218fa9c75a48f3d41c72.webp?size=128',
+        footer: 'Client made by 0xmrcl'
+    },
+    miscellaneous: {
+        showWelcome: true,
+    },
+    version: pkg.version,
 }
 // -- CONFIG END ---
 
 const logColors = {
-    INFO: '\x1b[36m',    // Cyan
-    ERROR: '\x1b[31m',   // Red
-    WARN: '\x1b[33m',    // Yellow
-    RESET: '\x1b[0m'     // Reset color
+    INFO: '\x1b[36m',
+    ERROR: '\x1b[31m',
+    WARN: '\x1b[33m',
+    RESET: '\x1b[0m'
 };
+
+process.on('unhandledRejection', (err) => {
+    console.error(`${logColors.ERROR}[ ERROR ]${logColors.RESET} unhandledRejection:`, err);
+});
+
+
+process.on('uncaughtException', (err) => {
+    console.error(`${logColors.ERROR}[ ERROR ]${logColors.RESET} uncaughtException:`, err);
+    process.exit(1);
+});
 
 function getActivityType(typeString) {
     const types = {
@@ -54,32 +76,70 @@ function getActivityTypeName(typeNumber) {
     return types[typeNumber] || 'Playing';
 }
 
-const cosmetic = {
-    welcome() {
-        console.log(`${logColors.INFO}------------- MSG -------------${logColors.RESET}`);
+if (settings.miscellaneous.showWelcome) {
+    console.log(`${logColors.INFO}------------- MSG -------------${logColors.RESET}`);
 
-        console.log(`${logColors.INFO}[ INFO ]${logColors.RESET} Welcome!`)
-        console.log(`${logColors.INFO}[ INFO ]${logColors.RESET} Made by 0xMRCL.`);
+    console.log(`${logColors.INFO}[ INFO ]${logColors.RESET} Welcome!`)
+    console.log(`${logColors.INFO}[ INFO ]${logColors.RESET} Made by 0xMRCL.`);
+    console.log(`${logColors.INFO}[ INFO ]${logColors.RESET} Running version ${settings.version}.`);
 
-        console.log(`${logColors.INFO}------------- END -------------${logColors.RESET}`);
-    }
+    console.log(`${logColors.INFO}------------- END -------------${logColors.RESET}`);
 }
+
 
 if (!TOKEN || !CLIENT_ID) {
     console.error(`${logColors.ERROR}[ ERROR ]${logColors.RESET} Environment missing:`);
-    if (!TOKEN) {console.error(`${logColors.ERROR}[ ERROR ]${logColors.RESET} DISCORD_TOKEN missing.`);}
-    if (!CLIENT_ID) {console.error(`${logColors.ERROR}[ ERROR ]${logColors.RESET} DISCORD_CLIENT_ID missing.`);}
+    if (!TOKEN) {
+        console.error(`${logColors.ERROR}[ ERROR ]${logColors.RESET} DISCORD_TOKEN missing.`);
+    }
+    if (!CLIENT_ID) {
+        console.error(`${logColors.ERROR}[ ERROR ]${logColors.RESET} DISCORD_CLIENT_ID missing.`);
+    }
     process.exit(1);
 }
 
 // --- Client ---
 const client = new Client({intents: [GatewayIntentBits.Guilds]});
+let logger;
+if (settings.loggingWebhook.enabled) {
+    console.log(`${logColors.INFO}[ INFO ]${logColors.RESET} WebLogging enabled.`);
+    logger = new WebhookClient({url: settings.loggingWebhook.webhookURL});
+} else {
+    console.log(`${logColors.INFO}[ INFO ]${logColors.RESET} WebLogging disabled.`);
+    logger = null;
+}
 
-        // Command Registry
-async function registerCommands(){
+async function logToWebhook(options = {}) {
+    if (!logger) return;
+
+    const embed = new EmbedBuilder()
+        .setColor(options.color || 0x0099FF) // Default blue
+        .setTitle(options.title || 'System Notification')
+        .setDescription(options.description || 'No details provided.')
+        .setTimestamp()
+        .setFooter({text: settings.loggingWebhook.footer || 'Default'});
+
+    if (options.fields) embed.addFields(options.fields);
+
+    try {
+        await logger.send({
+            embeds: [embed],
+            username: settings.loggingWebhook.name || 'Default',
+            avatarURL: settings.loggingWebhook.avatarURL,
+        });
+    } catch (err) {
+        console.error(`${logColors.ERROR}[ ERROR ]${logColors.RESET} Webhook failed: ${err.message}`);
+    }
+}
+
+// Attach to client so commands can use it through interaction.client.logToWebhook()
+client.logToWebhook = logToWebhook;
+
+// Command Registry
+async function registerCommands() {
     client.commands = new Map();
 
-        // File locator
+    // File locator
     if (fs.existsSync(commandsDir)) {
         const files = fs.readdirSync(commandsDir).filter(f => f.endsWith('.js'));
         for (const file of files) {
@@ -110,11 +170,11 @@ async function registerCommands(){
     console.log(`${logColors.INFO}[ INFO ]${logColors.RESET} ${client.commands.size} commands loaded: ${[...client.commands.keys()].join(', ') || '–'}`);
 }
 
-        // Presence Registry
+// Presence Registry
 client.once(Events.ClientReady, async (c) => {
     console.log(`${logColors.INFO}[ INFO ]${logColors.RESET} Logged in as ${c.user.tag}`);
 
-        // Set bot presence from settings
+    // Set bot presence from settings
     if (settings.activity.enabled) {
         const presence = {
             activities: [{
@@ -145,7 +205,12 @@ client.once(Events.ClientReady, async (c) => {
     } else if (!settings.activity.enabled) {
         console.log(`${logColors.INFO}[ INFO ]${logColors.RESET} Presence disabled.`)
     }
-        // Transmitter
+    // Transmitter
+        // Guard
+    if (!client.commands || client.commands.size === 0) {
+        console.log(`${logColors.WARN}[ WARN ]${logColors.RESET} No commands loaded; skipping global registration.`);
+        return;
+    }   // Transmit
     const rest = new REST({version: '10'}).setToken(TOKEN);
     try {
         const payload = [...client.commands.values()].map(cmd => cmd.data);
@@ -156,11 +221,11 @@ client.once(Events.ClientReady, async (c) => {
         console.error(`${logColors.ERROR}[ ERROR ]${logColors.RESET} Registry ERR (Transmitter):`, err);
     }
 });
-        // On command execution
+// On command execution
 client.on(Events.InteractionCreate, async (interaction) => {
     if (!interaction.isChatInputCommand()) return;
 
-        // Access command
+    // Access command
     const command = client.commands?.get(interaction.commandName);
     if (!command) {
         console.warn(`${logColors.WARN}[ WARN ]${logColors.RESET} Unknown command: ${interaction.commandName}`);
@@ -172,20 +237,42 @@ client.on(Events.InteractionCreate, async (interaction) => {
         return;
     }
 
+    // generate logging Identifier
+    const logId = `[${interaction.commandName} | ${interaction.user.username} | ${interaction.id.slice(-5)}]`;
+
     try {
-        console.log(`${logColors.INFO}----------- Process -----------${logColors.RESET}`);
+        console.log(`${logColors.INFO}----------- ${logId} S -----------${logColors.RESET}`);
+        console.time(logId);
+
         await command.execute(interaction);
-        console.log(`${logColors.INFO}------------- END -------------${logColors.RESET}`);
+
     } catch (err) {
-        console.error(`${logColors.ERROR}[ ERROR ]${logColors.RESET} Error in /${interaction.commandName}:`, err);
+        console.error(`${logColors.ERROR}[ ERROR ]${logId}:${logColors.RESET}`, err);
         if (interaction.deferred || interaction.replied) {
             await interaction.editReply('There was an error executing this command.');
         } else {
             await interaction.reply({content: 'There was an error executing this command.', ephemeral: true});
         }
+    } finally {
+        console.timeEnd(logId);
+        console.log(`${logColors.INFO}----------- ${logId} E -----------${logColors.RESET}`);
+        // Log to Webhook
+        await client.logToWebhook({
+            title: 'Command Execution Log',
+            color: 0x57F287,
+            fields: [
+                {name: 'Command', value: `\`/${interaction.commandName}\``, inline: true},
+                {name: 'User', value: `${interaction.user.username} (\`${interaction.user.id}\`)`, inline: true},
+                {name: 'Location', value: interaction.guild ? interaction.guild.name : 'DM', inline: true},
+            ]
+        });
     }
 });
 client.on('error', (e) => console.error('Client error:', e));
-client.login(TOKEN);
-registerCommands();
-cosmetic.welcome();
+
+async function start() {
+    await registerCommands();
+    await client.login(TOKEN);
+}
+
+start();
