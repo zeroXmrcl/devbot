@@ -15,10 +15,9 @@ export default {
         ],
     },
     async execute(interaction) {
-        console.info(`${interaction} by ${interaction.user.username} (${interaction.user.id}) in ${interaction.guild.name}`);
-        console.time(`cmd ${interaction} (${interaction.guild.name})`);
-
         const input = interaction.options.getString('text');
+
+        console.log(input);
 
         if (input) {
             const encrypted = crypto.createHash('sha256').update(input).digest('hex');
@@ -26,7 +25,5 @@ export default {
         } else {
             await interaction.reply('No input provided.');
         }
-
-        console.timeEnd(`cmd ${interaction} (${interaction.guild.name})`);
     },
 };
