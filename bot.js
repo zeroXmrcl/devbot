@@ -5,6 +5,13 @@ import fs from 'fs';
 import path from 'path';
 import url from 'url';
 
+const envBool = (v, def = false) =>
+    v == null ? def : ['1','true','yes','on'].includes(String(v).toLowerCase());
+
+const envStr = (v, def = '') =>
+    (v == null || v === '') ? def : String(v);
+
+
 // --- CONFIG ---
 const TOKEN = process.env.DISCORD_TOKEN;
 const CLIENT_ID = process.env.DISCORD_CLIENT_ID;
@@ -15,27 +22,29 @@ const commandsDir = path.join(__dirname, 'commands');
 
 const settings = {
     activity: {
-        enabled: true,
-        status: 'dnd', // online, idle, dnd, invisible
-        activityType: 'Custom', // Playing, Streaming (requires a Twitch/YouTube link), Listening, Watching, Competing, Custom
-        name: `Released v${pkg.version}!`, // the text to display
-        url: '', // Needed if activityType === 'Streaming'
+        enabled: envBool(process.env.PRESENCE_ENABLE, false),
+        status: envStr(process.env.PRESENCE_STATUS, 'online'),
+        activityType: envStr(process.env.PRESENCE_ACTIVITY, 'Custom'),
+        name: envStr(process.env.PRESENCE_NAME, `Released v${pkg.version}!`),
+        url: envStr(process.env.PRESENCE_STREAMING_URL, ''),
     },
     loggingWebhook: {
-        webhookURL: process.env.LOG_WEBHOOK_URL || '',
-        enabled: !!process.env.LOG_WEBHOOK_URL,
-        name: 'DevBot Webhook',
-        avatarURL: 'https://cdn.discordapp.com/avatars/1434159790904442890/1d85919a393d218fa9c75a48f3d41c72.webp?size=128',
-        footer: 'Client made by 0xmrcl'
+        enabled: envBool(process.env.WEBHOOK_ENABLE, false),
+        webhookURL: envStr(process.env.WEBHOOK_URL, ''),
+        name: envStr(process.env.WEBHOOK_NAME, 'Bot Log'),
+        avatarURL: envStr(process.env.WEBHOOK_AVATAR_URL, ''),
+        footer: envStr(process.env.WEBHOOK_FOOTER, 'Client made by 0xmrcl'),
     },
     miscellaneous: {
-        showWelcome: true,
+        showWelcome: envBool(process.env.SHOW_WELCOME, true),
+        activateFeatures: envBool(process.env.FEATURES_ENABLE, false),
     },
     version: pkg.version,
-}
+};
+
 // -- CONFIG END ---
 
-const logColors = {
+export const logColors = {
     INFO: '\x1b[36m',
     ERROR: '\x1b[31m',
     WARN: '\x1b[33m',
@@ -99,14 +108,19 @@ if (!TOKEN || !CLIENT_ID) {
 }
 
 // --- Client ---
-const client = new Client({intents: [GatewayIntentBits.Guilds]});
-let logger;
-if (settings.loggingWebhook.enabled) {
+const client = new Client({
+    intents: [
+        GatewayIntentBits.Guilds,
+        GatewayIntentBits.GuildVoiceStates
+    ]
+});
+let logger = null;
+
+if (settings.loggingWebhook.enabled && settings.loggingWebhook.webhookURL) {
     console.log(`${logColors.INFO}[ INFO ]${logColors.RESET} WebLogging enabled.`);
-    logger = new WebhookClient({url: settings.loggingWebhook.webhookURL});
+    logger = new WebhookClient({ url: settings.loggingWebhook.webhookURL });
 } else {
     console.log(`${logColors.INFO}[ INFO ]${logColors.RESET} WebLogging disabled.`);
-    logger = null;
 }
 
 async function logToWebhook(options = {}) {
@@ -132,7 +146,7 @@ async function logToWebhook(options = {}) {
     }
 }
 
-// Attach to client so commands can use it through interaction.client.logToWebhook()
+// Attach to the client so commands can use it through interaction.client.logToWebhook()
 client.logToWebhook = logToWebhook;
 
 // Command Registry
@@ -168,6 +182,23 @@ async function registerCommands() {
     }
 
     console.log(`${logColors.INFO}[ INFO ]${logColors.RESET} ${client.commands.size} commands loaded: ${[...client.commands.keys()].join(', ') || '–'}`);
+}
+
+async function registerFeatures() {
+    const featuresPath = path.join(__dirname, 'features');
+    if (fs.existsSync(featuresPath)) {
+        const featureFiles = fs.readdirSync(featuresPath).filter(file => file.endsWith('.js'));
+
+        for (const file of featureFiles) {
+            const mod = await import(new URL(`./features/${file}`, import.meta.url));
+            const feature = mod.default ?? mod; 
+            
+            if (typeof feature === 'function') {
+                feature(client);
+                console.log(`${logColors.INFO}[ INFO ]${logColors.RESET} Loaded feature: ${file}`);
+            }
+        }
+    }
 }
 
 // Presence Registry
@@ -272,6 +303,9 @@ client.on('error', (e) => console.error('Client error:', e));
 
 async function start() {
     await registerCommands();
+    if (settings.miscellaneous.activateFeatures){
+        await registerFeatures();
+    }
     await client.login(TOKEN);
 }
 
