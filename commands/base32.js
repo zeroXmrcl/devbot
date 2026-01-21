@@ -1,3 +1,12 @@
+/*
+ * Copyright (c) 2026 zeroXmrcl (aka 0xmrcl)
+ *
+ * Licensed under a custom license.
+ * Use is permitted for private and internal commercial purposes only.
+ * Selling, sublicensing, or claiming this work as your own is prohibited.
+ * See the LICENSE file for full terms.
+ */
+
 import base32 from 'hi-base32';
 
 export default {
