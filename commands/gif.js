@@ -14,7 +14,7 @@ import { randomBytes } from 'crypto';
 import path from 'path';
 import ffmpegPath from 'ffmpeg-static';
 import pkg from 'discord.js';
-
+import {logColors} from "../bot.js";
 
 const { InteractionResponseFlags } = pkg;
 
@@ -36,13 +36,6 @@ export default {
     },
 
     async execute(interaction) {
-        const guildName = interaction.guild?.name ?? 'ELSE';
-
-        console.time(`cmd ${interaction.commandName} (${guildName})`);
-        console.info(
-            `${interaction.commandName} by ${interaction.user.username} (${interaction.user.id}) in ${guildName}`
-        );
-
         try {
             const attachment = interaction.options.getAttachment('attachment');
 
@@ -106,7 +99,7 @@ export default {
             await unlink(inputPath).catch(() => {});
             await unlink(outputPath).catch(() => {});
         } catch (err) {
-            console.error('[ ERROR ]', err);
+            console.error(`${logColors.ERROR}[ ERROR ]${logColors.RESET}`, err);
 
             if (interaction.deferred || interaction.replied) {
                 await interaction.editReply({ content: 'Error converting to GIF.' });

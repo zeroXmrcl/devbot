@@ -9,7 +9,16 @@
 
 import 'dotenv/config';
 import pkg from './package.json' with { type: 'json' };
-import {Client, GatewayIntentBits, REST, Routes, Events, ActivityType, WebhookClient, EmbedBuilder} from 'discord.js';
+import {
+    Client,
+    GatewayIntentBits,
+    REST,
+    Routes,
+    Events,
+    ActivityType,
+    WebhookClient,
+    EmbedBuilder
+} from 'discord.js';
 import fs from 'fs';
 import path from 'path';
 import url from 'url';
@@ -278,12 +287,18 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
 
     // generate logging Identifier
-    const logId = `[${interaction.commandName} | ${interaction.user.username} | ${interaction.id.slice(-5)}]`;
-
+    const logId = `Command ${interaction.id.slice(-5)}`;
+    const timeId = `Executed ${interaction.id.slice(-5)} in`;
+    const optionsText = interaction.options?.data?.length
+        ? interaction.options.data.map(o => String(o.value)).join(', ')
+        : '–';
     try {
         console.log(`${logColors.INFO}----------- ${logId} S -----------${logColors.RESET}`);
-        console.time(logId);
-
+        console.time(timeId);
+        console.log(`Command : /${interaction.commandName}`);
+        console.log(`Options : ${optionsText}`);
+        console.log(`User    : ${interaction.user.username} (${interaction.user.id})`);
+        console.log(`Guild   : ${interaction.guild?.name ?? 'DM'}`);
         await command.execute(interaction);
 
     } catch (err) {
@@ -294,7 +309,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
             await interaction.reply({content: 'There was an error executing this command.', ephemeral: true});
         }
     } finally {
-        console.timeEnd(logId);
+        console.timeEnd(timeId);
         console.log(`${logColors.INFO}----------- ${logId} E -----------${logColors.RESET}`);
         // Log to Webhook
         await client.logToWebhook({
@@ -302,6 +317,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
             color: 0x57F287,
             fields: [
                 {name: 'Command', value: `\`/${interaction.commandName}\``, inline: true},
+                {name: 'Options', value: optionsText, inline: true},
                 {name: 'User', value: `${interaction.user.username} (\`${interaction.user.id}\`)`, inline: true},
                 {name: 'Location', value: interaction.guild ? interaction.guild.name : 'DM', inline: true},
             ]

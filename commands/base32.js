@@ -36,8 +36,6 @@ export default {
         const input = interaction.options.getString('text');
         const mode = interaction.options.getString('mode');
 
-        console.log(input, mode);
-
         const result = mode === 'encode' ? base32.encode(input) : base32.decode(input);
         
         await interaction.reply(`${result}`);
