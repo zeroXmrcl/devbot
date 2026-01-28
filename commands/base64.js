@@ -35,7 +35,6 @@ export default {
         const input = interaction.options.getString('text');
         const mode = interaction.options.getString('mode');
 
-        console.log(input, mode);
 
         let result;
         if (mode === 'encode') {

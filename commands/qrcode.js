@@ -31,8 +31,6 @@ export default {
         const input = interaction.options.getString('text');
         const shouldEncode = interaction.options.getBoolean('url');
 
-        console.log(input, shouldEncode);
-
         try {
             const finalText = shouldEncode ? encodeURI(input) : input;
 
