@@ -26,8 +26,6 @@ export default {
     async execute(interaction) {
         const input = interaction.options.getString('text');
 
-        console.log(input);
-
         if (input) {
             const encrypted = crypto.createHash('sha256').update(input).digest('hex');
             await interaction.reply(`${encrypted}`);
